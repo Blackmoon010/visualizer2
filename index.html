@@ -12,7 +12,7 @@
       --accent-glow: hsla(var(--ui-hue), 100%, 50%, 0.45);
       --accent-dim: hsla(var(--ui-hue), 100%, 50%, 0.15);
       --bg-dark: #07070b;
-      --panel-bg: rgba(14, 14, 22, 0.92);
+      --panel-bg: rgba(14, 14, 22, 0.94);
       --panel-border: rgba(255, 255, 255, 0.15);
       --text-main: #f5f5fa;
       --text-muted: #8b8b9e;
@@ -54,20 +54,17 @@
       z-index: 2;
     }
 
-    /* Auto-fading HUD Layer */
     #hud-layer {
       position: absolute;
       inset: 0;
       z-index: 10;
       pointer-events: none;
-      transition: opacity 0.6s ease, visibility 0.6s;
-      opacity: 1 !important;
-      visibility: visible !important;
+      transition: opacity 0.6s ease;
+      opacity: 1;
     }
 
     #hud-layer.hud-idle {
-      opacity: 0 !important;
-      visibility: hidden !important;
+      opacity: 0;
     }
 
     header {
@@ -120,93 +117,4 @@
       background: var(--panel-bg);
       border: 1px solid var(--panel-border);
       border-radius: 6px;
-      padding: 4px 10px;
-      backdrop-filter: blur(12px);
-    }
-
-    .quick-viz-title {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      color: var(--accent);
-      min-width: 120px;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .deck-container {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: stretch;
-      gap: 14px;
-      max-height: 42vh;
-      pointer-events: auto;
-    }
-
-    .panel {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      backdrop-filter: blur(16px);
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      overflow: hidden;
-      flex: 1 1 0px;
-      min-width: 250px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-    }
-
-    .panel-title {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--accent);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--panel-border);
-      padding-bottom: 6px;
-    }
-
-    .playlist-scroll {
-      overflow-y: auto;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-right: 4px;
-    }
-
-    .empty-msg {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      text-align: center;
-      margin-top: 25px;
-      line-height: 1.4;
-    }
-
-    .queue-item {
-      padding: 6px 8px;
-      border-radius: 4px;
-      font-size: 0.78rem;
-      background: rgba(255, 255, 255, 0.04);
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.15s ease;
-      gap: 6px;
-    }
-
-    .queue-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .queue-item.active {
+      padding: 4px
