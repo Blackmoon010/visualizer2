@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <title>BLACKMOON 0-1-0 // v0.9.9</title>
+  <style>
+    :root {
+      --ui-hue: 185;
+      --accent: hsl(var(--ui-hue), 100%, 50%);
+      --accent-glow: hsla(var(--ui-hue), 100%, 50%, 0.45);
+      --accent-dim: hsla(var(--ui-hue), 100%, 50%, 0.15);
+      --bg-dark: #07070b;
+      --panel-bg: rgba(14, 14, 22, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text-main: #f5f5fa;
+      --text-muted: #8b8b9e;
+      --font-mono: "SF Mono", "Consolas", "Monaco", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #visualizer-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Ambient Glow Overlay */
+    .screen-fade {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 35%, rgba(5, 5, 8, 0.6) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Auto-fading HUD Wrapper */
+    #hud-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.8s;
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #hud-layer.hud-idle {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* Header Bar */
+    header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      height: 38px;
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .brand-title span.accent-text {
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* Quick Viz Switcher in Header */
+    .quick-viz-deck {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      backdrop-filter: blur(12px);
+    }
+
+    .quick-viz-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      min-width: 110px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Bottom Deck Controls Grid */
+    .deck-container {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 14px;
+      max-height: 38vh;
+      pointer-events: auto;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      backdrop-filter: blur(16px);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1 1 0px;
+      min-width: 260px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 6px;
+    }
+
+    /* Track Queue / Playlist Scroll */
+    .playlist-scroll {
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 4px;
+    }
+
+    .empty-msg {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 28px;
+      line-height: 1.4;
+    }
+
+    .queue-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s ease;
+      gap: 6px;
+    }
+
+    .queue-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .queue-item.active {
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .queue-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .btn-remove-track {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .btn-remove-track:hover {
+      color: #ff5566;
+      background: rgba(255, 85, 102, 0.15);
+    }
+
+    /* Transport Center Window */
+    .transport-center {
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title-wrapper {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .track-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      display: inline-block;
+    }
+
+    .track-title.marquee {
+      position: absolute;
+      will-change: transform;
+      animation: marquee-scroll 12s linear infinite;
+    }
+
+    @keyframes marquee-scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .track-time {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .seek-bar-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .transport-buttons {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .transport-actions-row {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .vol-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .hud-label {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* Input & Buttons */
+    button, label.button {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover, label.button:hover {
+      background: var(--accent);
+      color: #050508;
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    button.active-toggle {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      gap: 8px;
+    }
+
+    select, input[type="range"] {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      outline: none;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      flex: 1;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+      cursor: pointer;
+    }
+
+    #file-upload-files, #file-upload-dir { display: none; }
+
+    @media (max-width: 860px) {
+      .deck-container {
+        flex-direction: column;
+        max-height: 52vh;
+        overflow-y: auto;
+      }
+      .panel { min-width: 100%; }
+      header { flex-direction: column; gap: 8px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="visualizer-canvas"></canvas>
+  <div class="screen-fade"></div>
+
+  <!-- AUTO-FADING HUD -->
+  <div id="hud-layer">
+    <header>
+      <div class="brand-group">
+        <img class="brand-logo" src="blackmoon-logo.png" alt="Blackmoon Logo" onerror="this.style.display='none'" />
+        <div>
+          <div class="brand-title"><span class="accent-text">BLACK</span>MOON 0-1-0</div>
+          <div class="brand-sub">// v0.9.9 PRODUCTION ENGINE</div>
+        </div>
+      </div>
+
+      <!-- Quick Viz Switcher Header -->
+      <div class="quick-viz-deck">
+        <button id="btn-quick-prev" type="button" title="Previous Visualizer">‹</button>
+        <div id="quick-viz-name" class="quick-viz-title">Vortex</div>
+        <button id="btn-quick-next" type="button" title="Next Visualizer">›</button>
+      </div>
+    </header>
+
+    <div class="deck-container">
+      <!-- PANEL 1: TRACK QUEUE & INGESTION -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>Track Queue</span>
+          <div style="display: flex; gap: 4px;">
+            <label for="file-upload-files" class="button" title="Add Audio Files">+ Files</label>
+            <input type="file" id="file-upload-files" multiple accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a" />
+            <label for="file-upload-dir" class="button" title="Add Whole Folder">+ Folder</label>
+            <input type="file" id="file-upload-dir" webkitdirectory directory multiple />
+          </div>
+        </div>
+        <div class="playlist-scroll" id="queue-container">
+          <div class="empty-msg">No tracks loaded.<br>Add individual files or an entire folder.</div>
+        </div>
+      </div>
+
+      <!-- PANEL 2: TRANSPORT DECK -->
+      <div class="panel transport-center">
+        <div style="width: 100%; text-align: center;">
+          <div class="title-wrapper" id="title-box">
+            <span class="track-title" id="display-title">NO TRACK LOADED</span>
+          </div>
+          <div class="track-time" id="display-time">00:00 / 00:00</div>
+        </div>
+
+        <div class="seek-bar-container">
+          <input type="range" id="slider-seek" min="0" max="100" step="0.1" value="0" />
+        </div>
+
+        <div class="transport-buttons">
+          <button id="btn-shuffle" type="button" title="Shuffle Queue">🔀</button>
+          <button id="btn-prev" type="button" title="Previous Track">⏮</button>
+          <button id="btn-play" type="button" style="min-width: 80px; border-color: var(--accent);" title="Play/Pause">Play</button>
+          <button id="btn-next" type="button" title="Next Track">⏭</button>
+          <button id="btn-repeat" type="button" title="Repeat Mode">🔁 Off</button>
+        </div>
+
+        <div class="transport-actions-row">
+          <div class="vol-box">
+            <span class="hud-label">VOL</span>
+            <input type="range" id="slider-volume" min="0" max="1" step="0.01" value="0.8" />
+          </div>
+          <button id="btn-fullscreen" type="button" title="Toggle Fullscreen (F11)">⛶ Fullscreen</button>
+        </div>
+      </div>
+
+      <!-- PANEL 3: ENGINE, CHROMATIC SHIFT & PRESETS -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>Engine & Controls</span>
+        </div>
+        <div class="control-row">
+          <span>Visualization</span>
+          <select id="select-engine">
+            <option value="vortex">Vortex</option>
+            <option value="nebula">Nebula</option>
+            <option value="starfield">Starfield</option>
+            <option value="ring">Ring</option>
+            <option value="tunnel">Tunnel</option>
+            <option value="cybergrid">Cyber Grid</option>
+            <option value="oscilloscope">Oscilloscope</option>
+            <option value="quantum">Quantum Pulse</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <span>UI Hue Shift</span>
+          <input type="range" id="slider-app-hue" min="0" max="360" step="1" value="185" />
+        </div>
+        <div class="control-row">
+          <span>Bass Reactivity</span>
+          <input type="range" id="slider-reactivity" min="0.5" max="3.5" step="0.1" value="1.6" />
+        </div>
+        <div class="btn-row" style="margin-top: 4px;">
+          <button id="btn-save-preset" style="flex: 1;">Save Deck</button>
+          <button id="btn-clear-queue" style="flex: 1;">Clear Queue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio-player"></audio>
+
+  <script>
+    /* =========================================================
+       AUDIO & WEB AUDIO ANALYSIS GRAPH
+       ========================================================= */
+    const audio = document.getElementById("audio-player");
+    let audioCtx = null;
+    let analyser = null;
+    let sourceNode = null;
+    let gainNode = null;
+    let freqData = null;
+    let timeData = null;
+
+    function initAudioGraph() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.85;
+
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = parseFloat(localStorage.getItem("bm_vol") || "0.8");
+
+        sourceNode = audioCtx.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+        analyser.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        timeData = new Uint8Array(analyser.fftSize);
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    /* =========================================================
+       PERSISTENT ENGINE STATE
+       ========================================================= */
+    const STORAGE_KEY = "bm_099_state";
+    const MODES = ["vortex", "nebula", "starfield", "ring", "tunnel", "cybergrid", "oscilloscope", "quantum"];
+
+    let appState = {
+      mode: "vortex",
+      reactivity: 1.6,
+      hue: 185,
+      shuffle: false,
+      repeat: "off", // off | one | all
+      volume: 0.8
+    };
+
+    function loadSavedConfig() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (saved) Object.assign(appState, saved);
+      } catch (e) {}
+
+      applyAppHue(appState.hue);
+      document.getElementById("select-engine").value = appState.mode;
+      document.getElementById("slider-app-hue").value = appState.hue;
+      document.getElementById("slider-reactivity").value = appState.reactivity;
+      document.getElementById("slider-volume").value = appState.volume;
+      updateQuickVizTitle();
+      updateShuffleBtn();
+      updateRepeatBtn();
+    }
+
+    function saveConfig() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    }
+
+    function applyAppHue(hueVal) {
+      document.documentElement.style.setProperty("--ui-hue", hueVal);
+      appState.hue = hueVal;
+    }
+
+    /* =========================================================
+       IDLE HUD AUTO-FADE CONTROLLER
+       ========================================================= */
+    const hudLayer = document.getElementById("hud-layer");
+    let idleTimeout = null;
+
+    function resetIdleTimer() {
+      hudLayer.classList.remove("hud-idle");
+      clearTimeout(idleTimeout);
+      if (!audio.paused) {
+        idleTimeout = setTimeout(() => {
+          hudLayer.classList.add("hud-idle");
+        }, 3500);
+      }
+    }
+
+    window.addEventListener("mousemove", resetIdleTimer);
+    window.addEventListener("mousedown", resetIdleTimer);
+    window.addEventListener("touchstart", resetIdleTimer);
+    window.addEventListener("keydown", resetIdleTimer);
+
+    /* =========================================================
+       PLAYLIST & QUEUE ARCHITECTURE
+       ========================================================= */
+    let queue = [];
+    let currentTrackIdx = -1;
+    let shuffleBag = [];
+
+    const fileUploadFiles = document.getElementById("file-upload-files");
+    const fileUploadDir = document.getElementById("file-upload-dir");
+    const queueContainer = document.getElementById("queue-container");
+    const displayTitle = document.getElementById("display-title");
+    const displayTime = document.getElementById("display-time");
+    const titleBox = document.getElementById("title-box");
+
+    const btnPlay = document.getElementById("btn-play");
+    const btnPrev = document.getElementById("btn-prev");
+    const btnNext = document.getElementById("btn-next");
+    const btnShuffle = document.getElementById("btn-shuffle");
+    const btnRepeat = document.getElementById("btn-repeat");
+    const btnClearQueue = document.getElementById("btn-clear-queue");
+    const btnFullscreen = document.getElementById("btn-fullscreen");
+    const sliderSeek = document.getElementById("slider-seek");
+    const sliderVol = document.getElementById("slider-volume");
+
+    function handleAudioFiles(files) {
+      const incoming = Array.from(files).filter(f => f.type.startsWith("audio/") || /\.(mp3|wav|ogg|flac|m4a)$/i.test(f.name));
+      if (!incoming.length) return;
+
+      incoming.forEach(f => {
+        queue.push({
+          name: f.name.replace(/\.[^/.]+$/, ""),
+          file: f,
+          url: null
+        });
+      });
+
+      renderQueue();
+      if (currentTrackIdx === -1) {
+        loadTrack(0, true);
+      }
+    }
+
+    fileUploadFiles.addEventListener("change", (e) => handleAudioFiles(e.target.files));
+    fileUploadDir.addEventListener("change", (e) => handleAudioFiles(e.target.files));
+
+    function renderQueue() {
+      queueContainer.innerHTML = "";
+      if (!queue.length) {
+        queueContainer.innerHTML = `<div class="empty-msg">No tracks loaded.<br>Add individual files or an entire folder.</div>`;
+        return;
+      }
+
+      queue.forEach((item, idx) => {
+        const el = document.createElement("div");
+        el.className = `queue-item ${idx === currentTrackIdx ? "active" : ""}`;
+
+        const spanTitle = document.createElement("span");
+        spanTitle.className = "queue-title";
+        spanTitle.textContent = `${idx + 1}. ${item.name}`;
+        spanTitle.addEventListener("click", () => loadTrack(idx, true));
+
+        const btnRemove = document.createElement("button");
+        btnRemove.className = "btn-remove-track";
+        btnRemove.innerHTML = "✕";
+        btnRemove.title = "Remove Track";
+        btnRemove.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeTrack(idx);
+        });
+
+        el.appendChild(spanTitle);
+        el.appendChild(btnRemove);
+        queueContainer.appendChild(el);
+      });
+    }
+
+    function removeTrack(idx) {
+      if (idx < 0 || idx >= queue.length) return;
+
+      if (queue[idx].url) {
+        URL.revokeObjectURL(queue[idx].url);
+      }
+
+      if (idx === currentTrackIdx) {
+        audio.pause();
+        audio.src = "";
+        queue.splice(idx, 1);
+        if (queue.length > 0) {
+          loadTrack(Math.min(idx, queue.length - 1), true);
+        } else {
+          currentTrackIdx = -1;
+          displayTitle.textContent = "NO TRACK LOADED";
+          displayTitle.classList.remove("marquee");
+          btnPlay.textContent = "Play";
+          renderQueue();
+        }
+      } else {
+        if (idx < currentTrackIdx) currentTrackIdx--;
+        queue.splice(idx, 1);
+        renderQueue();
+      }
+    }
+
+    btnClearQueue.addEventListener("click", () => {
+      audio.pause();
+      audio.src = "";
+      queue.forEach(t => { if (t.url) URL.revokeObjectURL(t.url); });
+      queue = [];
+      currentTrackIdx = -1;
+      displayTitle.textContent = "NO TRACK LOADED";
+      displayTitle.classList.remove("marquee");
+      displayTime.textContent = "00:00 / 00:00";
+      btnPlay.textContent = "Play";
+      renderQueue();
+    });
+
+    function loadTrack(idx, autoPlay = false) {
+      if (idx < 0 || idx >= queue.length) return;
+
+      initAudioGraph();
+
+      if (currentTrackIdx !== -1 && queue[currentTrackIdx] && queue[currentTrackIdx].url) {
+        URL.revokeObjectURL(queue[currentTrackIdx].url);
+        queue[currentTrackIdx].url = null;
+      }
+
+      currentTrackIdx = idx;
+      const track = queue[currentTrackIdx];
+      track.url = URL.createObjectURL(track.file);
+
+      audio.src = track.url;
+      displayTitle.textContent = track.name;
+      checkMarquee();
+      renderQueue();
+
+      if (autoPlay) {
+        audio.play().catch(e => console.warn("Waiting for user gesture:", e));
+        btnPlay.textContent = "Pause";
+        resetIdleTimer();
+      }
+    }
+
+    function checkMarquee() {
+      displayTitle.classList.remove("marquee");
+      if (displayTitle.offsetWidth > titleBox.offsetWidth) {
+        displayTitle.classList.add("marquee");
+      }
+    }
+    window.addEventListener("resize", checkMarquee);
+
+    /* =========================================================
+       TRANSPORT CONTROLS & SHUFFLE/REPEAT
+       ========================================================= */
+    btnPlay.addEventListener("click", () => {
+      initAudioGraph();
+      if (!queue.length) return;
+
+      if (audio.paused) {
+        audio.play();
+        btnPlay.textContent = "Pause";
+        resetIdleTimer();
+      } else {
+        audio.pause();
+        btnPlay.textContent = "Play";
+        hudLayer.classList.remove("hud-idle");
+      }
+    });
+
+    function advanceTrack(direction = 1) {
+      if (!queue.length) return;
+
+      if (appState.shuffle) {
+        if (!shuffleBag.length) {
+          shuffleBag = queue.map((_, i) => i).filter(i => i !== currentTrackIdx);
+        }
+        if (shuffleBag.length) {
+          const randBagIdx = Math.floor(Math.random() * shuffleBag.length);
+          const nextIdx = shuffleBag.splice(randBagIdx, 1)[0];
+          loadTrack(nextIdx, true);
+          return;
+        }
+      }
+
+      let targetIdx = currentTrackIdx + direction;
+      if (targetIdx >= queue.length) {
+        if (appState.repeat === "all") targetIdx = 0;
+        else return;
+      } else if (targetIdx < 0) {
+        targetIdx = queue.length - 1;
+      }
+
+      loadTrack(targetIdx, true);
+    }
+
+    btnNext.addEventListener("click", () => advanceTrack(1));
+    btnPrev.addEventListener("click", () => advanceTrack(-1));
+
+    btnShuffle.addEventListener("click", () => {
+      appState.shuffle = !appState.shuffle;
+      shuffleBag = [];
+      updateShuffleBtn();
+      saveConfig();
+    });
+
+    function updateShuffleBtn() {
+      btnShuffle.classList.toggle("active-toggle", appState.shuffle);
+    }
+
+    btnRepeat.addEventListener("click", () => {
+      if (appState.repeat === "off") appState.repeat = "one";
+      else if (appState.repeat === "one") appState.repeat = "all";
+      else appState.repeat = "off";
+      updateRepeatBtn();
+      saveConfig();
+    });
+
+    function updateRepeatBtn() {
+      btnRepeat.textContent = `🔁 ${appState.repeat.toUpperCase()}`;
+      btnRepeat.classList.toggle("active-toggle", appState.repeat !== "off");
+    }
+
+    audio.addEventListener("ended", () => {
+      if (appState.repeat === "one") {
+        audio.currentTime = 0;
+        audio.play();
+      } else {
+        advanceTrack(1);
+      }
+    });
+
+    audio.addEventListener("timeupdate", () => {
+      if (!audio.duration) return;
+      sliderSeek.value = (audio.currentTime / audio.duration) * 100;
+      displayTime.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    });
+
+    sliderSeek.addEventListener("input", (e) => {
+      if (audio.duration) {
+        audio.currentTime = (parseFloat(e.target.value) / 100) * audio.duration;
+      }
+    });
+
+    sliderVol.addEventListener("input", (e) => {
+      const vol = parseFloat(e.target.value);
+      appState.volume = vol;
+      if (gainNode) gainNode.gain.value = vol;
+      localStorage.setItem("bm_vol", vol);
+      saveConfig();
+    });
+
+    btnFullscreen.addEventListener("click", toggleFullscreen);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        btnFullscreen.textContent = "Exit Full";
+      } else {
+        document.exitFullscreen().catch(() => {});
+        btnFullscreen.textContent = "⛶ Fullscreen";
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    /* =========================================================
+       ENGINE PRESETS & QUICK TOGGLE
+       ========================================================= */
+    const selectEngine = document.getElementById("select-engine");
+    const quickVizName = document.getElementById("quick-viz-name");
+    const btnQuickPrev = document.getElementById("btn-quick-prev");
+    const btnQuickNext = document.getElementById("btn-quick-next");
+    const sliderHue = document.getElementById("slider-app-hue");
+    const sliderReactivity = document.getElementById("slider-reactivity");
+    const btnSavePreset = document.getElementById("btn-save-preset");
+
+    function setVisualizerMode(mode) {
+      if (!MODES.includes(mode)) return;
+      appState.mode = mode;
+      selectEngine.value = mode;
+      updateQuickVizTitle();
+      saveConfig();
+    }
+
+    function updateQuickVizTitle() {
+      quickVizName.textContent = appState.mode.toUpperCase();
+    }
+
+    selectEngine.addEventListener("change", (e) => setVisualizerMode(e.target.value));
+
+    btnQuickNext.addEventListener("click", () => {
+      const idx = (MODES.indexOf(appState.mode) + 1) % MODES.length;
+      setVisualizerMode(MODES[idx]);
+    });
+
+    btnQuickPrev.addEventListener("click", () => {
+      const idx = (MODES.indexOf(appState.mode) - 1 + MODES.length) % MODES.length;
+      setVisualizerMode(MODES[idx]);
+    });
+
+    sliderHue.addEventListener("input", (e) => {
+      applyAppHue(parseInt(e.target.value, 10));
+      saveConfig();
+    });
+
+    sliderReactivity.addEventListener("input", (e) => {
+      appState.reactivity = parseFloat(e.target.value);
+      saveConfig();
+    });
+
+    btnSavePreset.addEventListener("click", () => {
+      saveConfig();
+      btnSavePreset.textContent = "Saved!";
+      setTimeout(() => btnSavePreset.textContent = "Save Deck", 1200);
+    });
+
+    /* =========================================================
+       RENDER ENGINE: 8 CONSOLIDATED VISUALIZATION MODES
+       ========================================================= */
+    const canvas = document.getElementById("visualizer-canvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // Reusable particle systems
+    const particles = Array.from({ length: 260 }, () => ({
+      x: (Math.random() - 0.5) * window.innerWidth * 2,
+      y: (Math.random() - 0.5) * window.innerHeight * 2,
+      z: Math.random() * 1000 + 1,
+      angle: Math.random() * Math.PI * 2,
+      radius: Math.random() * 450 + 40
+    }));
+
+    let globalTick = 0;
+
+    function renderFrame() {
+      requestAnimationFrame(renderFrame);
+
+      let bass = 0;
+      let mid = 0;
+      let treble = 0;
+
+      if (analyser && freqData && timeData) {
+        analyser.getByteFrequencyData(freqData);
+        analyser.getByteTimeDomainData(timeData);
+
+        let bSum = 0; for (let i = 0; i < 24; i++) bSum += freqData[i];
+        bass = (bSum / 24) / 255;
+
+        let mSum = 0; for (let i = 24; i < 110; i++) mSum += freqData[i];
+        mid = (mSum / 86) / 255;
+
+        let tSum = 0; for (let i = 110; i < 220; i++) tSum += freqData[i];
+        treble = (tSum / 110) / 255;
+      }
+
+      const effectiveBass = bass * appState.reactivity;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const currentHue = appState.hue;
+
+      // Dark canvas clear with dynamic tail trail
+      ctx.fillStyle = "rgba(7, 7, 11, 0.25)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      globalTick += 0.01 + (effectiveBass * 0.04);
+
+      switch (appState.mode) {
+        /* MODE 1: VORTEX */
+        case "vortex": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          particles.forEach((p, i) => {
+            p.angle += 0.006 + (effectiveBass * 0.02);
+            const r = p.radius + Math.sin(globalTick + i) * 35 * effectiveBass;
+            const px = Math.cos(p.angle) * r;
+            const py = Math.sin(p.angle) * r;
+
+            const hue = (currentHue + (i * 0.5) + (effectiveBass * 60)) % 360;
+            ctx.strokeStyle = `hsla(${hue}, 90%, 55%, ${0.3 + effectiveBass * 0.7})`;
+            ctx.lineWidth = 1.2 + effectiveBass * 3;
+
+            ctx.beginPath();
+            ctx.arc(px, py, 2 + effectiveBass * 6, 0, Math.PI * 2);
+            ctx.stroke();
+          });
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 2: NEBULA */
+        case "nebula": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + globalTick * 0.4;
+            const dist = 130 + Math.sin(globalTick + i) * 90 * effectiveBass;
+            const x = Math.cos(angle) * dist;
+            const y = Math.sin(angle) * dist;
+
+            const grad = ctx.createRadialGradient(x, y, 10, x, y, 180 + effectiveBass * 140);
+            const hue = (currentHue + i * 28) % 360;
+            grad.addColorStop(0, `hsla(${hue}, 95%, 55%, ${0.28 + effectiveBass * 0.45})`);
+            grad.addColorStop(1, "rgba(7, 7, 11, 0)");
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(x, y, 220 + effectiveBass * 140, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 3: STARFIELD */
+        case "starfield": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          particles.forEach(p => {
+            p.z -= 4 + (effectiveBass * 28);
+            if (p.z <= 1) {
+              p.z = 1000;
+              p.x = (Math.random() - 0.5) * canvas.width * 2;
+              p.y = (Math.random() - 0.5) * canvas.height * 2;
+            }
+
+            const k = 250 / p.z;
+            const px = p.x * k;
+            const py = p.y * k;
+            const size = Math.max(1, (1 - p.z / 1000) * 5 * (1 + effectiveBass * 1.5));
+
+            const hue = (currentHue + (1 - p.z / 1000) * 80) % 360;
+            ctx.fillStyle = `hsla(${hue}, 90%, 65%, ${1 - p.z / 1000})`;
+            ctx.beginPath();
+            ctx.arc(px, py, size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 4: RING (GROK CONSOLIDATION)[cite: 1] */
+        case "ring": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          const baseRadius = Math.min(cx, cy) * 0.4;
+          const points = 120;
+          ctx.beginPath();
+          for (let i = 0; i <= points; i++) {
+            const angle = (i / points) * Math.PI * 2;
+            const freqVal = freqData ? (freqData[i % freqData.length] / 255) : 0;
+            const r = baseRadius + (freqVal * 120 * effectiveBass);
+            const x = Math.cos(angle) * r;
+            const y = Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.strokeStyle = `hsl(${currentHue}, 100%, 60%)`;
+          ctx.lineWidth = 2 + effectiveBass * 4;
+          ctx.shadowBlur = 18 * effectiveBass;
+          ctx.shadowColor = `hsl(${currentHue}, 100%, 50%)`;
+          ctx.stroke();
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 5: TUNNEL (GROK CONSOLIDATION)[cite: 1] */
+        case "tunnel": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          const rings = 12;
+          for (let i = 1; i <= rings; i++) {
+            const progress = (i / rings + (globalTick * 0.5)) % 1;
+            const r = progress * Math.min(cx, cy) * 1.3;
+            const alpha = progress * (0.2 + effectiveBass * 0.8);
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(2, r), 0, Math.PI * 2);
+            ctx.strokeStyle = `hsla(${(currentHue + i * 15) % 360}, 95%, 60%, ${alpha})`;
+            ctx.lineWidth = 1.5 + (effectiveBass * 3);
+            ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 6: CYBER GRID (NEW) */
+        case "cybergrid": {
+          ctx.save();
+          const horizon = cy * 0.9;
+          ctx.strokeStyle = `hsla(${currentHue}, 90%, 55%, 0.45)`;
+          ctx.lineWidth = 1 + effectiveBass * 2;
+
+          // Vanishing perspective rays
+          const cols = 20;
+          for (let i = -cols; i <= cols; i++) {
+            ctx.beginPath();
+            ctx.moveTo(cx, horizon);
+            ctx.lineTo(cx + (i * 70), canvas.height);
+            ctx.stroke();
+          }
+
+          // Horizontal flowing grid lines
+          const rows = 12;
+          for (let i = 0; i < rows; i++) {
+            const yProg = Math.pow((i + (globalTick * 2) % 1) / rows, 2);
+            const lineY = horizon + yProg * (canvas.height - horizon);
+            ctx.beginPath();
+            ctx.moveTo(0, lineY);
+            ctx.lineTo(canvas.width, lineY);
+            ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 7: OSCILLOSCOPE (NEW) */
+        case "oscilloscope": {
+          if (!timeData) break;
+          ctx.save();
+          ctx.beginPath();
+          const sliceWidth = canvas.width / timeData.length;
+          let x = 0;
+          for (let i = 0; i < timeData.length; i++) {
+            const v = (timeData[i] / 128.0) - 1.0;
+            const y = cy + (v * cy * 0.65 * effectiveBass);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            x += sliceWidth;
+          }
+          ctx.strokeStyle = `hsl(${currentHue}, 100%, 65%)`;
+          ctx.lineWidth = 2.5 + effectiveBass * 3;
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = `hsl(${currentHue}, 100%, 50%)`;
+          ctx.stroke();
+          ctx.restore();
+          break;
+        }
+
+        /* MODE 8: QUANTUM PULSE (NEW) */
+        case "quantum": {
+          ctx.save();
+          ctx.translate(cx, cy);
+          const rings = 7;
+          for (let i = 0; i < rings; i++) {
+            const pulseRadius = (Math.sin(globalTick + i * 0.8) * 0.5 + 0.5) * Math.min(cx, cy) * 0.7;
+            const dynamicRadius = pulseRadius * (1 + effectiveBass * 0.6);
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(1, dynamicRadius), 0, Math.PI * 2);
+            ctx.strokeStyle = `hsla(${(currentHue + i * 40) % 360}, 90%, 60%, ${0.3 + effectiveBass * 0.6})`;
+            ctx.lineWidth = 2 + effectiveBass * 4;
+            ctx.stroke();
+          }
+          ctx.restore();
+          break;
+        }
+      }
+    }
+
+    // Launch
+    loadSavedConfig();
+    renderFrame();
+  </script>
+</body>
+</html>
