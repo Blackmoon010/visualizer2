@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#07070b" />
+  <title>BLACKMOON 0-1-0 // v0.9.9b</title>
+  <style>
+    :root {
+      --ui-hue: 185;
+      --accent: hsl(var(--ui-hue), 100%, 50%);
+      --accent-glow: hsla(var(--ui-hue), 100%, 50%, 0.45);
+      --accent-dim: hsla(var(--ui-hue), 100%, 50%, 0.15);
+      --bg-dark: #07070b;
+      --panel-bg: rgba(14, 14, 22, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text-main: #f5f5fa;
+      --text-muted: #8b8b9e;
+      --font-mono: "SF Mono", "Consolas", "Monaco", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #visualizer-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .screen-fade {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 35%, rgba(5, 5, 8, 0.6) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Auto-fading HUD Layer */
+    #hud-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.8s;
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #hud-layer.hud-idle {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* Header Bar */
+    header {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      height: 38px;
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 0 8px var(--accent-glow));
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .brand-title span.accent-text {
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* Quick Viz Header Switcher */
+    .quick-viz-deck {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      backdrop-filter: blur(12px);
+    }
+
+    .quick-viz-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent);
+      min-width: 120px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Deck Layout Grid */
+    .deck-container {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 14px;
+      max-height: 40vh;
+      pointer-events: auto;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      backdrop-filter: blur(16px);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1 1 0px;
+      min-width: 260px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 6px;
+    }
+
+    /* Track Queue */
+    .playlist-scroll {
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 4px;
+    }
+
+    .empty-msg {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 28px;
+      line-height: 1.4;
+    }
+
+    .queue-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s ease;
+      gap: 6px;
+    }
+
+    .queue-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .queue-item.active {
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .queue-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .btn-remove-track {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .btn-remove-track:hover {
+      color: #ff5566;
+      background: rgba(255, 85, 102, 0.15);
+    }
+
+    /* Transport Center */
+    .transport-center {
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title-wrapper {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .track-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      display: inline-block;
+    }
+
+    .track-title.marquee {
+      position: absolute;
+      will-change: transform;
+      animation: marquee-scroll 12s linear infinite;
+    }
+
+    @keyframes marquee-scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .track-artist {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-time {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .seek-bar-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .transport-buttons {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .transport-actions-row {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .vol-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .hud-label {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* Standard Button/Input Controls */
+    button, label.button {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover, label.button:hover {
+      background: var(--accent);
+      color: #050508;
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    button.active-toggle {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      gap: 8px;
+    }
+
+    select, input[type="range"] {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      outline: none;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      flex: 1;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+      cursor: pointer;
+    }
+
+    #file-upload-files, #file-upload-dir, #file-import-viz { display: none; }
+
+    @media (max-width: 860px) {
+      .deck-container {
+        flex-direction: column;
+        max-height: 52vh;
+        overflow-y: auto;
+      }
+      .panel { min-width: 100%; }
+      header { flex-direction: column; gap: 8px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="visualizer-canvas"></canvas>
+  <div class="screen-fade"></div>
+
+  <div id="hud-layer">
+    <header>
+      <div class="brand-group">
+        <img class="brand-logo" src="blackmoon-logo.png
