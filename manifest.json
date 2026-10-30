@@ -1,0 +1,9 @@
+{
+  "name": "BLACKMOON 0-1-0",
+  "short_name": "BLACKMOON",
+  "description": "BLACKMOON 0-1-0 visualizer player",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505"
+}

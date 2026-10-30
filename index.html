@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BLACKMOON 0-1-0 // Visualizer Deck</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header>
+    <h1>BLACK<span>MOON</span> 0-1-0</h1>
+    <span class="sub">// v0.9.6b LOCAL DECK</span>
+  </header>
+
+  <canvas id="visualizer-canvas"></canvas>
+
+  <div class="deck-container">
+    <!-- PANEL 1: LOCAL PLAYLIST -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>Track Queue</span>
+        <label for="file-upload" class="button" style="padding: 2px 8px; font-size: 0.7rem;">+ Load Audio</label>
+        <input type="file" id="file-upload" multiple accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a" />
+      </div>
+      <div class="playlist-scroll" id="playlist-container">
+        <div class="empty-msg">Queue empty.<br>Tap "+ Load Audio" to add tracks.</div>
+      </div>
+    </div>
+
+    <!-- PANEL 2: TRANSPORT DECK -->
+    <div class="panel transport-center">
+      <div class="track-info">
+        <div class="title" id="display-track-title">NO TRACK LOADED</div>
+        <div class="status" id="display-track-time">00:00 / 00:00</div>
+      </div>
+      <div class="transport-buttons">
+        <button id="btn-prev">Prev</button>
+        <button id="btn-play" style="min-width: 80px; border-color: var(--accent);">Play</button>
+        <button id="btn-next">Next</button>
+      </div>
+      <div class="volume-container">
+        <span class="vol-label">VOL</span>
+        <input type="range" id="slider-volume" min="0" max="1" step="0.01" value="0.8" />
+      </div>
+    </div>
+
+    <!-- PANEL 3: ENGINE & PRESETS -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>Engine & Presets</span>
+      </div>
+      <div class="control-row">
+        <span>Mode</span>
+        <select id="select-engine">
+          <option value="vortex">Vortex</option>
+          <option value="nebula">Nebula</option>
+          <option value="starfield">Starfield</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <span>Bass Reactivity</span>
+        <input type="range" id="slider-reactivity" min="0.5" max="3" step="0.1" value="1.5" />
+      </div>
+      <div class="control-row">
+        <span>Color Shift</span>
+        <input type="range" id="slider-colorshift" min="0" max="360" step="1" value="180" />
+      </div>
+      <div class="btn-row" style="margin-top: 4px;">
+        <button id="btn-save-preset" style="flex: 1;">Save Preset</button>
+        <button id="btn-load-preset" style="flex: 1;">Restore</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio-player"></audio>
+
+  <script src="visualizer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
