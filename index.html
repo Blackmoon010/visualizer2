@@ -1,4 +1,4 @@
-html_v100_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -754,14 +754,14 @@ html_v100_content = """<!DOCTYPE html>
                     if (frameId === "TIT2") {
                       try {
                         const raw = new Uint8Array(buffer, frameDataOffset, frameDataSize);
-                        title = (encoding === 1 || encoding === 2 ? new TextDecoder("utf-16") : new TextDecoder("utf-8")).decode(raw).replace(/\\0/g, "").trim();
+                        title = (encoding === 1 || encoding === 2 ? new TextDecoder("utf-16") : new TextDecoder("utf-8")).decode(raw).replace(/\0/g, "").trim();
                       } catch (_) {}
                     }
 
                     if (frameId === "TPE1") {
                       try {
                         const raw = new Uint8Array(buffer, frameDataOffset, frameDataSize);
-                        artist = (encoding === 1 || encoding === 2 ? new TextDecoder("utf-16") : new TextDecoder("utf-8")).decode(raw).replace(/\\0/g, "").trim();
+                        artist = (encoding === 1 || encoding === 2 ? new TextDecoder("utf-16") : new TextDecoder("utf-8")).decode(raw).replace(/\0/g, "").trim();
                       } catch (_) {}
                     }
 
@@ -819,7 +819,7 @@ html_v100_content = """<!DOCTYPE html>
       }
 
       function parseTrackMeta(fileName) {
-        const clean = fileName.replace(/\\.[^/.]+$/, "");
+        const clean = fileName.replace(/\.[^/.]+$/, "");
         if (clean.includes(" - ")) {
           const parts = clean.split(" - ");
           return {
@@ -939,7 +939,7 @@ html_v100_content = """<!DOCTYPE html>
 
       async function appendAudioFiles(files) {
         if (!files || !files.length) return;
-        const incoming = Array.from(files).filter(f => f.type.startsWith("audio/") || /\\.(mp3|wav|ogg|flac|m4a)$/i.test(f.name));
+        const incoming = Array.from(files).filter(f => f.type.startsWith("audio/") || /\.(mp3|wav|ogg|flac|m4a)$/i.test(f.name));
         if (!incoming.length) return;
 
         const wasEmpty = queue.length === 0;
@@ -1646,9 +1646,3 @@ html_v100_content = """<!DOCTYPE html>
   </script>
 </body>
 </html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_v100_content)
-
-print("Saved updated index.html successfully, size:", len(html_v100_content))
